@@ -4,12 +4,36 @@
 */
 // Dependencies
 const http = require('http');
+const https = require('https');
 const url = require('url');
+const fs = require('fs');
 const StringDecoder = require('string_decoder').StringDecoder;
+const config = require('./config');
 
-// The server should respond to all requests with a string
-const server = http.createServer((req, res) => {
+// Instantiate the HTTP server
+const httpServer = http.createServer((req, res) => {
   // Get the URL and parse it
+  unifiedServer(req, res);
+});
+// Start the server, and have it listen on port 3000
+httpServer.listen(config.httpPort, () => {
+  console.log(`The server is listening on port ${config.httpPort}`)
+});
+// Instantiate the HTTPS server
+const httpsServerOptions = {
+  'key': fs.readFileSync('./https/key.pem'),
+  'cert': fs.readFileSync('./https/cert.pem')
+};
+const httpsServer = https.createServer(httpsServerOptions, (req, res) => {
+  unifiedServer(req, res);
+})
+// Start the HTTPS server
+httpsServer.listen(config.httpsPort, () => {
+  console.log(`The server is listening on port ${config.httpsPort}`)
+});
+
+// All teh server logic for both the http adn https server
+const unifiedServer = (req, res) => {
   const parsedUrl = url.parse(req.url, true);
   // Get the path from that URL
   const path = parsedUrl.pathname;
@@ -53,23 +77,16 @@ const server = http.createServer((req, res) => {
 
       // Log the requested path
       console.log('Returning this response:', statusCode, payloadString);
-    })
-    // Send the response
-  })
-});
-
-// Start the server, and have it listen on port 3000
-server.listen(3000, () => {
-  console.log('The server is listening on port 3000 now')
-});
+    });
+  });
+}
 
 // Define the handlers
 const handlers = {};
 
-// Sample handler
-handlers.sample = (data, callback) => {
-  // Callback a http status code and a payload object
-  callback(406, { 'name': 'sample handler' });
+// Ping handler (to let know that server is still alive)
+handlers.ping = (data, callback) => {
+  callback(200);
 };
 
 // Not found handler
@@ -79,5 +96,5 @@ handlers.notFound = (data, callback) => {
 
 // Define a request router
 const router = {
-  'sample': handlers.sample
+  'ping': handlers.ping
 };
